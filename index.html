@@ -3,25 +3,675 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON and the Web</title>
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
+    <title>Interactive Rifle Builder | Real Attachment Recommendations</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #070b12;
+            --panel: #101826;
+            --panel-2: #1b2638;
+            --accent: #38bdf8;
+            --accent-soft: #7dd3fc;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --ok: #34d399;
+            --warn: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 10% 5%, rgba(14, 116, 144, 0.28), transparent 38%),
+                radial-gradient(circle at 95% 95%, rgba(59, 130, 246, 0.2), transparent 42%),
+                var(--bg);
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 2rem 1rem 3rem;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.8rem, 3.1vw, 2.9rem);
+            letter-spacing: 0.02em;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-top: 0.6rem;
+            max-width: 950px;
+            line-height: 1.55;
+        }
+
+        .layout {
+            margin-top: 1.4rem;
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 1rem;
+        }
+
+        .panel {
+            background: linear-gradient(165deg, rgba(27, 38, 56, 0.95), rgba(16, 24, 38, 0.98));
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 16px;
+            padding: 1rem;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.32);
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            border: 1px solid rgba(125, 211, 252, 0.4);
+            background: rgba(14, 116, 144, 0.2);
+            color: #bae6fd;
+            font-size: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .gun-stage {
+            min-height: 360px;
+            border-radius: 12px;
+            background: rgba(9, 13, 22, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .gun-stage svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .part-selector {
+            margin-top: 0.9rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .part-chip {
+            border: 1px solid rgba(125, 211, 252, 0.35);
+            border-radius: 8px;
+            padding: 0.45rem 0.5rem;
+            background: rgba(2, 132, 199, 0.1);
+            color: #e0f2fe;
+            font-size: 0.82rem;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .part-chip.active {
+            background: rgba(56, 189, 248, 0.26);
+            border-color: rgba(103, 232, 249, 0.95);
+        }
+
+        .gun-part {
+            fill: #233248;
+            stroke: #64748b;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+        }
+
+        .gun-part:hover,
+        .gun-part:focus-visible {
+            fill: #2f435e;
+            stroke: var(--accent-soft);
+            filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.3));
+            outline: none;
+        }
+
+        .gun-part.active {
+            fill: #164e63;
+            stroke: #67e8f9;
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+        }
+
+        .part-label {
+            font-size: 0.82rem;
+            fill: #d1d5db;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        #partTitle {
+            margin: 0 0 0.4rem;
+            font-size: 1.48rem;
+        }
+
+        #partDescription {
+            margin: 0 0 0.8rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        #partTips {
+            margin: 0 0 1rem;
+            color: #dbeafe;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            border-left: 3px solid rgba(56, 189, 248, 0.6);
+            padding-left: 0.7rem;
+        }
+
+        .attachment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .attachment-card {
+            border: 1px solid rgba(148, 163, 184, 0.23);
+            border-radius: 10px;
+            background: rgba(10, 16, 28, 0.75);
+            padding: 0.85rem;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .attachment-card h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .manufacturer {
+            color: #7dd3fc;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .meta {
+            font-size: 0.86rem;
+            color: #d1d5db;
+            line-height: 1.4;
+        }
+
+        .card-actions {
+            margin-top: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        button,
+        .link-btn {
+            border-radius: 8px;
+            padding: 0.42rem 0.58rem;
+            font-weight: 600;
+            font-size: 0.84rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid rgba(125, 211, 252, 0.48);
+            color: #e0f2fe;
+            background: rgba(2, 132, 199, 0.16);
+            transition: background 0.2s ease;
+        }
+
+        button:hover,
+        .link-btn:hover,
+        button:focus-visible,
+        .link-btn:focus-visible {
+            background: rgba(56, 189, 248, 0.28);
+            outline: none;
+        }
+
+        .build-summary {
+            margin-top: 1rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            padding-top: 1rem;
+        }
+
+        .build-summary h3 {
+            margin: 0 0 0.65rem;
+        }
+
+        .summary-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .summary-list li {
+            background: rgba(15, 23, 42, 0.68);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 0.45rem 0.55rem;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .summary-list li span {
+            color: var(--ok);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .disclaimer {
+            margin-top: 1.25rem;
+            color: #e2e8f0;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            background: rgba(120, 53, 15, 0.15);
+            border-radius: 10px;
+            padding: 0.7rem 0.75rem;
+        }
+
+        .disclaimer strong {
+            color: var(--warn);
+        }
+
+        @media (max-width: 960px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-
 <body>
+<div class="page">
+    <h1>Interactive Rifle Builder (Real Brands & Product Links)</h1>
+    <p class="subtitle">Click any highlighted part of the rifle to explore real-world attachment brands and product pages. This prototype is built for practical gear research and loadout planning, not game-only simulation.</p>
 
-<h2>JSON and the Web</h2>
+    <div class="layout">
+        <section class="panel">
+            <div class="tag">Click or press Enter/Space on any highlighted part</div>
+            <div class="gun-stage">
+                <svg viewBox="0 0 900 380" role="img" aria-label="Interactive rifle diagram with selectable parts">
+                    <rect x="130" y="45" width="120" height="40" class="gun-part" data-part="optic" tabindex="0" aria-label="Select optic slot"></rect>
+                    <text x="145" y="70" class="part-label">Optic</text>
 
-<div>
-    <button id="citButton">CIT Majors</button>
-    <button id="busButton">Business Majors</button>
+                    <rect x="55" y="100" width="170" height="65" class="gun-part" data-part="stock" tabindex="0" aria-label="Select stock slot"></rect>
+                    <text x="85" y="138" class="part-label">Stock</text>
+
+                    <rect x="210" y="120" width="370" height="72" class="gun-part" data-part="receiver" tabindex="0" aria-label="Select receiver slot"></rect>
+                    <text x="355" y="164" class="part-label">Receiver</text>
+
+                    <rect x="585" y="125" width="180" height="44" class="gun-part" data-part="barrel" tabindex="0" aria-label="Select barrel slot"></rect>
+                    <text x="630" y="153" class="part-label">Barrel</text>
+
+                    <rect x="756" y="133" width="75" height="28" class="gun-part" data-part="muzzle" tabindex="0" aria-label="Select muzzle slot"></rect>
+                    <text x="764" y="153" class="part-label">Muzzle</text>
+
+                    <polygon points="280,194 355,194 380,285 295,285" class="gun-part" data-part="grip" tabindex="0" aria-label="Select rear grip slot"></polygon>
+                    <text x="300" y="235" class="part-label">Grip</text>
+
+                    <rect x="390" y="194" width="80" height="120" class="gun-part" data-part="magazine" tabindex="0" aria-label="Select magazine slot"></rect>
+                    <text x="397" y="262" class="part-label">Mag</text>
+
+                    <rect x="550" y="173" width="135" height="22" class="gun-part" data-part="underbarrel" tabindex="0" aria-label="Select underbarrel slot"></rect>
+                    <text x="560" y="190" class="part-label">Underbarrel</text>
+                </svg>
+            </div>
+
+            <div class="part-selector" id="partSelector" aria-label="Backup part selector buttons"></div>
+
+            <p class="disclaimer"><strong>Notice:</strong> Always verify compatibility (thread pitch, rail standard, caliber, legal restrictions, and local/state/federal law) before purchasing firearm parts or accessories.</p>
+        </section>
+
+        <section class="panel">
+            <div class="tag" id="partTag">Current Slot</div>
+            <h2 id="partTitle">Select a gun part</h2>
+            <p id="partDescription">Pick any highlighted gun section to see recommendations.</p>
+            <p id="partTips">You will get direct links to manufacturer pages for faster real-world research.</p>
+
+            <div class="attachment-grid" id="attachmentGrid"></div>
+
+            <div class="build-summary">
+                <h3>Current Planned Build</h3>
+                <ul class="summary-list" id="buildSummary"></ul>
+            </div>
+        </section>
+    </div>
 </div>
 
-<table id="studentsTable">
-    <!-- Handlebars template will be populated here -->
-</table>
+<script>
+    const partData = {
+        optic: {
+            title: 'Optic',
+            description: 'Choose an optic that matches your expected distance and speed requirements.',
+            tips: 'Look at battery life, reticle type, mount height, and night-vision compatibility.',
+            attachments: [
+                {
+                    name: 'EOTECH EXPS3 Holographic Sight',
+                    manufacturer: 'EOTECH',
+                    benefit: 'Fast target acquisition with holographic reticle.',
+                    tradeoff: 'Heavier and shorter battery life than some micro dots.',
+                    url: 'https://www.eotechinc.com/eotech-hws-exps3'
+                },
+                {
+                    name: 'Aimpoint Micro T-2',
+                    manufacturer: 'Aimpoint',
+                    benefit: 'Excellent battery longevity and compact footprint.',
+                    tradeoff: 'Smaller window than larger holographic sights.',
+                    url: 'https://www.aimpoint.com/products/micro-t-2-red-dot-reflex-sight'
+                },
+                {
+                    name: 'Trijicon ACOG 4x32',
+                    manufacturer: 'Trijicon',
+                    benefit: 'Fixed magnification and rugged durability.',
+                    tradeoff: 'Slower at very close range without an offset solution.',
+                    url: 'https://www.trijicon.com/products/subcategory/trijicon-acog-riflescopes'
+                }
+            ]
+        },
+        stock: {
+            title: 'Stock',
+            description: 'Stock selection affects cheek weld, recoil control, and adjustability.',
+            tips: 'Confirm compatibility with your buffer system and receiver extension type.',
+            attachments: [
+                {
+                    name: 'Magpul CTR Carbine Stock',
+                    manufacturer: 'Magpul',
+                    benefit: 'Lightweight adjustable stock with friction lock.',
+                    tradeoff: 'Minimal storage compared with larger precision stocks.',
+                    url: 'https://magpul.com/ctr-carbine-stock-mil-spec.html'
+                },
+                {
+                    name: 'B5 Systems SOPMOD Stock',
+                    manufacturer: 'B5 Systems',
+                    benefit: 'Enhanced cheek weld with robust construction.',
+                    tradeoff: 'Bulkier footprint than slim carbine stocks.',
+                    url: 'https://b5systems.com/enhanced-sopmod-stock/'
+                },
+                {
+                    name: 'Magpul PRS Gen3',
+                    manufacturer: 'Magpul',
+                    benefit: 'Fine-adjust precision stock for long-range setups.',
+                    tradeoff: 'Heavier and less ideal for lightweight builds.',
+                    url: 'https://magpul.com/prs-gen3-precision-adjustable-stock.html'
+                }
+            ]
+        },
+        receiver: {
+            title: 'Receiver / Core Platform',
+            description: 'The receiver group determines your base operating profile and compatibility ecosystem.',
+            tips: 'Start here if you are planning a complete upper/lower path before accessories.',
+            attachments: [
+                {
+                    name: 'Aero Precision AR15 Lower Receivers',
+                    manufacturer: 'Aero Precision',
+                    benefit: 'Strong quality-to-price with broad parts compatibility.',
+                    tradeoff: 'Still requires matching parts selection and assembly choices.',
+                    url: 'https://www.aeroprecisionusa.com/ar15/lower-receivers'
+                },
+                {
+                    name: 'BCM Complete Upper Receiver Groups',
+                    manufacturer: 'Bravo Company (BCM)',
+                    benefit: 'Duty-grade complete upper options.',
+                    tradeoff: 'Higher upfront cost versus entry-level builds.',
+                    url: 'https://bravocompanyusa.com/upper-receiver-groups/'
+                },
+                {
+                    name: 'Daniel Defense Complete Rifles & Components',
+                    manufacturer: 'Daniel Defense',
+                    benefit: 'Well-regarded reliability and machining quality.',
+                    tradeoff: 'Premium pricing tier.',
+                    url: 'https://danieldefense.com/firearms.html'
+                }
+            ]
+        },
+        barrel: {
+            title: 'Barrel',
+            description: 'Barrel length and profile influence velocity, balance, and handling.',
+            tips: 'Check gas system length, twist rate, and intended ammo weight.',
+            attachments: [
+                {
+                    name: 'Ballistic Advantage Hanson Barrel Series',
+                    manufacturer: 'Ballistic Advantage',
+                    benefit: 'Balanced profile with good value and common lengths.',
+                    tradeoff: 'Specific performance depends on chosen profile and gas system.',
+                    url: 'https://www.ballisticadvantage.com/barrels/ar15-barrels/hanson-series.html'
+                },
+                {
+                    name: 'Criterion Core Series Barrel',
+                    manufacturer: 'Criterion Barrels',
+                    benefit: 'Strong accuracy reputation with practical profile.',
+                    tradeoff: 'Can be harder to find in stock at times.',
+                    url: 'https://criterionbarrels.com/products/ar-15/ar-15-core-series/'
+                },
+                {
+                    name: 'Daniel Defense Cold Hammer Forged Barrels',
+                    manufacturer: 'Daniel Defense',
+                    benefit: 'Durable CHF options for hard-use setups.',
+                    tradeoff: 'Higher cost compared with basic nitrided barrels.',
+                    url: 'https://danieldefense.com/components-parts/barrels.html'
+                }
+            ]
+        },
+        muzzle: {
+            title: 'Muzzle Device / Suppressor Mount',
+            description: 'Muzzle devices manage flash, recoil, and suppressor compatibility.',
+            tips: 'Match thread pitch exactly and verify suppressor mounting ecosystem.',
+            attachments: [
+                {
+                    name: 'SureFire SOCOM 3-Prong Flash Hider',
+                    manufacturer: 'SureFire',
+                    benefit: 'Excellent flash suppression and SOCOM suppressor mounting path.',
+                    tradeoff: 'Higher cost than generic flash hiders.',
+                    url: 'https://www.surefire.com/socom-3-prong-flash-hider/'
+                },
+                {
+                    name: 'SureFire SOCOM556-RC2 Suppressor',
+                    manufacturer: 'SureFire',
+                    benefit: 'Proven suppressor option for reduced signature and blast.',
+                    tradeoff: 'Weight, length, and legal/process requirements apply.',
+                    url: 'https://www.surefire.com/socom556-rc2-suppressor/'
+                },
+                {
+                    name: 'Dead Air KeyMo Flash Hider',
+                    manufacturer: 'Dead Air Silencers',
+                    benefit: 'Popular suppressor-ready mounting system.',
+                    tradeoff: 'Requires compatible suppressor mount ecosystem.',
+                    url: 'https://deadairsilencers.com/product/flash-hider/'
+                }
+            ]
+        },
+        grip: {
+            title: 'Rear Grip',
+            description: 'Grip angle and texture change comfort and trigger reach consistency.',
+            tips: 'Choose based on wrist angle preference and glove/no-glove usage.',
+            attachments: [
+                {
+                    name: 'Magpul MOE+ Grip',
+                    manufacturer: 'Magpul',
+                    benefit: 'Rubber overmold improves traction and comfort.',
+                    tradeoff: 'Slightly fuller feel may not suit all hand sizes.',
+                    url: 'https://magpul.com/moe-plus-grip-ar15-m4.html'
+                },
+                {
+                    name: 'BCM Gunfighter Grip Mod 3',
+                    manufacturer: 'Bravo Company (BCM)',
+                    benefit: 'Popular reduced angle for modern stance.',
+                    tradeoff: 'Texture may feel aggressive for some users.',
+                    url: 'https://bravocompanyusa.com/bcm-grip-mod-3-black/'
+                },
+                {
+                    name: 'Hogue OverMolded AR Grip',
+                    manufacturer: 'Hogue',
+                    benefit: 'Comfort-focused ergonomic profile.',
+                    tradeoff: 'Bulkier than minimalist grip options.',
+                    url: 'https://www.hogueinc.com/tacrifles/ar15/m16/grips'
+                }
+            ]
+        },
+        magazine: {
+            title: 'Magazine',
+            description: 'Capacity and reliability are major factors for training and defensive setups.',
+            tips: 'Use quality magazines and validate feed reliability with your specific ammo.',
+            attachments: [
+                {
+                    name: 'Magpul PMAG 30 AR/M4 GEN M3',
+                    manufacturer: 'Magpul',
+                    benefit: 'Widely adopted and proven reliability.',
+                    tradeoff: 'Polymer body can be bulkier in some pouches.',
+                    url: 'https://magpul.com/pmag-30-ar-m4-gen-m3.html'
+                },
+                {
+                    name: 'Lancer L5AWM 30-Round Magazine',
+                    manufacturer: 'Lancer Systems',
+                    benefit: 'Hybrid steel/polymer design with robust feed lips.',
+                    tradeoff: 'Typically higher cost than basic magazines.',
+                    url: 'https://lancer-systems.com/product/l5awm-30-magazine/'
+                },
+                {
+                    name: 'Okay SureFeed E2 Magazine',
+                    manufacturer: 'Okay Industries',
+                    benefit: 'Strong reputation for aluminum GI-style performance.',
+                    tradeoff: 'Less visual round count feedback than translucent options.',
+                    url: 'https://www.okayind.com/products/surefeed-magazines/'
+                }
+            ]
+        },
+        underbarrel: {
+            title: 'Underbarrel / Rail Accessories',
+            description: 'Foregrips, hand stops, and lights improve control and utility.',
+            tips: 'Confirm M-LOK/Picatinny interface compatibility before purchase.',
+            attachments: [
+                {
+                    name: 'Magpul AFG Angled Fore Grip',
+                    manufacturer: 'Magpul',
+                    benefit: 'Natural support-hand angle for many shooters.',
+                    tradeoff: 'Takes more rail space than very compact hand stops.',
+                    url: 'https://magpul.com/afg-angled-fore-grip.html'
+                },
+                {
+                    name: 'BCM Vertical Grip Mod 3',
+                    manufacturer: 'Bravo Company (BCM)',
+                    benefit: 'Compact vertical support with good texture.',
+                    tradeoff: 'Vertical profile is not preferred by all users.',
+                    url: 'https://bravocompanyusa.com/bcmgunfighter-vertical-grip-mod-3-m-lok-black/'
+                },
+                {
+                    name: 'SureFire Scout Light Pro',
+                    manufacturer: 'SureFire',
+                    benefit: 'Reliable weapon light for low-light identification.',
+                    tradeoff: 'Adds front-end weight and battery management needs.',
+                    url: 'https://www.surefire.com/scout-light-pro/'
+                }
+            ]
+        }
+    };
 
-<!-- Include your script.js file -->
-<script src="script.js"></script>
+    const selectedBuild = {};
+    const partTitle = document.getElementById('partTitle');
+    const partDescription = document.getElementById('partDescription');
+    const partTips = document.getElementById('partTips');
+    const partTag = document.getElementById('partTag');
+    const attachmentGrid = document.getElementById('attachmentGrid');
+    const buildSummary = document.getElementById('buildSummary');
+    const partSelector = document.getElementById('partSelector');
+
+    function renderSummary() {
+        buildSummary.innerHTML = '';
+        const entries = Object.entries(selectedBuild);
+
+        if (!entries.length) {
+            buildSummary.innerHTML = '<li><strong>None selected</strong><span>Click a part and equip an item</span></li>';
+            return;
+        }
+
+        entries.forEach(([partKey, selection]) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${partData[partKey].title}</strong><span>${selection.name}</span>`;
+            buildSummary.appendChild(li);
+        });
+    }
+
+
+    function renderPartSelector(activePart) {
+        partSelector.innerHTML = '';
+        Object.keys(partData).forEach((partKey) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `part-chip${activePart === partKey ? ' active' : ''}`;
+            button.textContent = partData[partKey].title;
+            button.addEventListener('click', () => showPart(partKey));
+            partSelector.appendChild(button);
+        });
+    }
+
+    function showPart(partKey) {
+        const part = partData[partKey];
+        if (!part) {
+            return;
+        }
+
+        partTitle.textContent = part.title;
+        partDescription.textContent = part.description;
+        partTips.textContent = part.tips;
+        partTag.textContent = `Current Slot: ${part.title}`;
+
+        attachmentGrid.innerHTML = '';
+        part.attachments.forEach((attachment) => {
+            const card = document.createElement('article');
+            card.className = 'attachment-card';
+            card.innerHTML = `
+                <h3>${attachment.name}</h3>
+                <div class="manufacturer">Manufacturer: ${attachment.manufacturer}</div>
+                <div class="meta"><strong>Why choose it:</strong> ${attachment.benefit}</div>
+                <div class="meta"><strong>Consideration:</strong> ${attachment.tradeoff}</div>
+                <div class="card-actions">
+                    <button type="button">Add to Build</button>
+                    <a class="link-btn" href="${attachment.url}" target="_blank" rel="noopener noreferrer">Visit Product Page</a>
+                </div>
+            `;
+
+            card.querySelector('button').addEventListener('click', () => {
+                selectedBuild[partKey] = {
+                    name: attachment.name,
+                    manufacturer: attachment.manufacturer,
+                    url: attachment.url
+                };
+                renderSummary();
+            });
+
+            attachmentGrid.appendChild(card);
+        });
+
+        document.querySelectorAll('.gun-part').forEach((element) => {
+            element.classList.toggle('active', element.dataset.part === partKey);
+        });
+
+        renderPartSelector(partKey);
+    }
+
+    document.querySelectorAll('.gun-part').forEach((partElement) => {
+        const activate = () => showPart(partElement.dataset.part);
+        partElement.addEventListener('click', activate);
+        partElement.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                activate();
+            }
+        });
+    });
+
+    renderSummary();
+    showPart('muzzle');
+</script>
 </body>
 </html>
